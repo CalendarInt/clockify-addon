@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const baseUrl =
   process.env.NODE_ENV === "development"
     ? "https://herring-endless-firmly.ngrok-free.app"
-    : "https://clockify-lakic94s-projects.vercel.app/";
+    : "https://clockify-addon-calendar-integrations-projects.vercel.app/";
 export async function GET(request: Request) {
   console.log(request);
 

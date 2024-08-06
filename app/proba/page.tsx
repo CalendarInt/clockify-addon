@@ -90,7 +90,7 @@ export default function ProbaTest() {
       redirectUri:
         (process.env.NODE_ENV === "development"
           ? "https://herring-endless-firmly.ngrok-free.app"
-          : "https://clockify-lakic94s-projects.vercel.app") +
+          : "https://clockify-addon-calendar-integrations-projects.vercel.app") +
         "/api/auth/azure",
     },
   });
@@ -230,7 +230,7 @@ export default function ProbaTest() {
       const tokens = await axiosInstance.post(
         (process.env.NODE_ENV === "development"
           ? "https://herring-endless-firmly.ngrok-free.app"
-          : "https://clockify-lakic94s-projects.vercel.app") + "/api/auth",
+          : "https://clockify-addon-calendar-integrations-projects.vercel.app") + "/api/auth",
         {
           code: codeResponse.code,
         }

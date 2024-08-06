@@ -71,7 +71,7 @@ export const fetchGoogleCalendars = async (
     let response = await axiosInstance.post(
       (process.env.NODE_ENV === "development"
         ? "https://herring-endless-firmly.ngrok-free.app"
-        : "https://clockify-lakic94s-projects.vercel.app") +
+        : "https://clockify-addon-calendar-integrations-projects.vercel.app") +
         "/api/auth/refresh",
 
       {
