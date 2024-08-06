@@ -1,0 +1,42 @@
+{
+  "data": {
+    "access_token": "ya29.a0Ad52N3-Lmf-MX7HJ3Udue13PE_SUATMKEyBnB7Wmo5vmR9yV09Pcl-0TuApsEqN0Kun1Qd_k0Xq03oRlEvBrw7Ozzi6lWzP60q7FgRTAcJRD9hbLN5S7dktsCmhiakiw826ZQB87OyMbzeeGFweaUWQWwFe0z1DM2ZlJaCgYKAeISARESFQHGX2Mi18zpz1JQkwsTuCXlzh0UAQ0171",
+    "refresh_token": "1//09NPhXnA0231DCgYIARAAGAkSNwF-L9IrGaox_WGqLZvLjyKc3hVjexo4RemjZkwm7FHm3J9o2WlX09IiWVYTYIMrqIW2cmZCw-8",
+    "scope": "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/userinfo.profile openid https://www.googleapis.com/auth/userinfo.email",
+    "token_type": "Bearer",
+    "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjkzNGE1ODE2NDY4Yjk1NzAzOTUzZDE0ZTlmMTVkZjVkMDlhNDAxZTQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjg5ODY5NjgxNjQtZmo4aGdzaTgyNW1vdG5jcDNhb3RiYXVyZmxhMGhqaDQuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIxMjg5ODY5NjgxNjQtZmo4aGdzaTgyNW1vdG5jcDNhb3RiYXVyZmxhMGhqaDQuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMDQ2ODA4Mjc4MjQ0NjEyMjExODEiLCJlbWFpbCI6Im5pbGFraWM5NEBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6IlFEQ1ppdUZCcW15WGJVYW9XQU1mZmciLCJuYW1lIjoiTmlrb2xhIExha2ljIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0lJbTF1Z1hTdTA0VER2MGgzTTdYbVFlckctV1E0NnJXNXpSNzhnTmtfYnh3PXM5Ni1jIiwiZ2l2ZW5fbmFtZSI6Ik5pa29sYSIsImZhbWlseV9uYW1lIjoiTGFraWMiLCJpYXQiOjE3MTE5ODc0MTgsImV4cCI6MTcxMTk5MTAxOH0.VVklMbxO3Tb9Bujy-RATxzfzaBByEGtCkMpH-4pYY6BOScqF69Tx_muy_D12RaWq1k34Tkrfa1XycoQwTNM03AXAKvcBj9OTTpCZnm9T6mdT-Jcm4Uw3XfeDxz-RxlIPfk2SJN0SDXR-RVbOORtW6vZO27u2MKsy9mUS1keCUA6g3d3WwXJjg4Y1UYzm5oSRhe6KdANLWveYU9NRXbqhrfEEpv3fFaVaLNC0PICIBL3z8KRTArMsdi7AYsTSF1WpELA7VsqTiPr1kook1LKGRxxYDRYrn8dVonC5g8WNTqPQYOEn42iaXa1s0jhNRQ2pfJnEtjtCPEIyfgWqFOGlqw",
+    "expiry_date": 1711991017696
+  },
+  "status": 200,
+  "statusText": "",
+  "headers": {
+    "content-type": "application/json",
+    "date": "Mon, 01 Apr 2024 16:03:38 GMT",
+    "ngrok-trace-id": "937f34571ecd34d07f54d9d7480bd47c",
+    "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url"
+  },
+  "config": {
+    "transitional": {
+      "silentJSONParsing": true,
+      "forcedJSONParsing": true,
+      "clarifyTimeoutError": false
+    },
+    "adapter": ["xhr", "http"],
+    "transformRequest": [null],
+    "transformResponse": [null],
+    "timeout": 0,
+    "xsrfCookieName": "XSRF-TOKEN",
+    "xsrfHeaderName": "X-XSRF-TOKEN",
+    "maxContentLength": -1,
+    "maxBodyLength": -1,
+    "env": {},
+    "headers": {
+      "Accept": "application/json, text/plain, */*",
+      "Content-Type": "application/json"
+    },
+    "method": "post",
+    "url": "https://herring-endless-firmly.ngrok-free.app/api/auth",
+    "data": "{\"code\":\"4/0AeaYSHA1MC7iZ470NOVE3jI3BlttUg94S7kTs0z3F1RVeeVXa-jm_xr3qu25IV0T88s6Kg\"}"
+  },
+  "request": {}
+}
