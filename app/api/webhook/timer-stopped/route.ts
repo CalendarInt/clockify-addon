@@ -68,10 +68,17 @@ export async function POST(request: Request, response: Response) {
     }
     // console.log(scopedUser.provider.google, "scopedUser");
 
+    const client = body.project.clientName
+      ? `${body.project?.clientName} : `
+      : "";
+    const project = body.project.name ?? "";
+    const task = body.task?.name ? ` : ${body.task?.name}` : "";
+    const description = body.description ? ` - ${body.description}` : "";
+
     let response = await axios.post(
       `https://www.googleapis.com/calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events`,
       {
-        summary: "No title",
+        summary: client + project + task + description,
         start: {
           dateTime: body.timeInterval.start,
         },
