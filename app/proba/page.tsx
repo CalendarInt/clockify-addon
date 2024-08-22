@@ -224,7 +224,7 @@ export default function ProbaTest() {
 
   const googleLogin = useGoogleLogin({
     scope:
-      "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
+      "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.events.readonly",
     flow: "auth-code",
     onSuccess: async (codeResponse) => {
       const tokens = await axiosInstance.post(
