@@ -223,14 +223,14 @@ export default function ProbaTest() {
   }
 
   const googleLogin = useGoogleLogin({
-    scope:
-      "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.events.readonly",
+    scope: "https://www.googleapis.com/auth/calendar.events",
     flow: "auth-code",
     onSuccess: async (codeResponse) => {
       const tokens = await axiosInstance.post(
         (process.env.NODE_ENV === "development"
           ? "https://herring-endless-firmly.ngrok-free.app"
-          : "https://clockify-addon-calendar-integrations-projects.vercel.app") + "/api/auth",
+          : "https://clockify-addon-calendar-integrations-projects.vercel.app") +
+          "/api/auth",
         {
           code: codeResponse.code,
         }
