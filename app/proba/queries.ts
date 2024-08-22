@@ -406,7 +406,7 @@ async function syncWithGoogleCalendar(
 
     combinedBody += `{
   "summary": "${entrie.description}",
-  "description": "${entrie.id}",
+  "description": "${entrie._id}",
   "colorId": "9",
   "start": {
     "dateTime": "${entrie.timeInterval.start}"
