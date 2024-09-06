@@ -230,7 +230,8 @@ export default function ProbaTest() {
       const tokens = await axiosInstance.post(
         (process.env.NODE_ENV === "development"
           ? "https://herring-endless-firmly.ngrok-free.app"
-          : "https://clockify-addon-calendar-integrations-projects.vercel.app") + "/api/auth",
+          : "https://clockify-addon-calendar-integrations-projects.vercel.app") +
+          "/api/auth",
         {
           code: codeResponse.code,
         }
@@ -366,8 +367,7 @@ export default function ProbaTest() {
                     />
                   </div>
                   <h1>
-                    Time entries will be displayed in blue color in Google
-                    Calendar
+                    Time entries will inherit color from Clockify Addon Calendar
                   </h1>
                 </div>
 
