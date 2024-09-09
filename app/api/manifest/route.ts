@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
   let data = {
     schemaVersion: "1.2",
-    key: "calendar",
+    key: "GoogleCalendarIntegrationSr",
     name: "Calendar Integration",
     description: "Example of every UI entrypoint for an addon",
     baseUrl: baseUrl,
