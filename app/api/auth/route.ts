@@ -9,9 +9,6 @@ export async function POST(request: NextRequest) {
     "postmessage"
   );
 
-  console.log(oAuth2Client, 'oAuth2Client');
-  
-
   const { tokens } = await oAuth2Client.getToken(body.code); // exchange code for tokens
 
   return NextResponse.json(tokens);
