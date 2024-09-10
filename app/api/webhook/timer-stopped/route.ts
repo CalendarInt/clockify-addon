@@ -68,7 +68,7 @@ export async function POST(request: Request, response: Response) {
     }
     // console.log(scopedUser.provider.google, "scopedUser");
 
-    const client = body.project.clientName
+    const client = body.project?.clientName
       ? `${body.project?.clientName} : `
       : "";
     const project = body.project.name ?? "";

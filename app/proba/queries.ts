@@ -216,7 +216,7 @@ export const timeEntriesSyncMutation = async (
 
     const timeEntries = detailedReport.data.timeentries.filter(
       (timeEntry: any) => {
-        const client = timeEntry.clientName
+        const client = timeEntry?.clientName
           ? `${timeEntry?.clientName} : `
           : "";
         const project = timeEntry.projectName ?? "";
