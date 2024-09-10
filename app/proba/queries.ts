@@ -219,9 +219,9 @@ export const timeEntriesSyncMutation = async (
         const client = timeEntry?.clientName
           ? `${timeEntry?.clientName} : `
           : "";
-        const project = timeEntry.projectName ?? "";
-        const task = timeEntry.taskName ? ` : ${timeEntry.taskName}` : "";
-        const description = timeEntry.description
+        const project = timeEntry?.projectName ?? "";
+        const task = timeEntry?.taskName ? ` : ${timeEntry.taskName}` : "";
+        const description = timeEntry?.description
           ? ` - ${timeEntry.description}`
           : "";
         timeEntry.description = `${client}${project}${task}${description}`;

@@ -74,7 +74,7 @@ export async function POST(request: Request, response: Response) {
     const client = body.project?.clientName
       ? `${body.project?.clientName} : `
       : "";
-    const project = body.project.name ?? "";
+    const project = body.project?.name ?? "";
     const task = body.task?.name ? ` : ${body.task?.name}` : "";
     const description = body.description ? ` - ${body.description}` : "";
 
