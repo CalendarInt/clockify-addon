@@ -90,7 +90,7 @@ export const fetchGoogleCalendars = async (
               auth: newAuthObject,
               sync: scopedUser.provider.google.sync,
               calendarId: scopedUser.provider.google.calendarId,
-              connected: true,
+              connected: scopedUser.provider.google.connected,
             },
           },
         },
@@ -126,27 +126,33 @@ export const fetchGoogleCalendars = async (
 
   let googleCalendar = null;
 
-  if (!has) {
-    const newCalendar = await axiosInstance.post(
-      "https://www.googleapis.com/calendar/v3/calendars",
-      {
-        summary: "Clockify Addon Calendar",
-      },
-      {
-        headers: {
-          Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
-        },
-      }
-    );
-
-    googleCalendar = newCalendar.data.id;
-  } else {
-    response.data.items.find((item: any) => {
+  if (has) {
+    response.data.items.map(async (item: any) => {
       if (item.summary === "Clockify Addon Calendar") {
-        googleCalendar = item.id;
+        await axiosInstance.delete(
+          `https://www.googleapis.com/calendar/v3/users/me/calendarList/${item.id}`,
+          {
+            headers: {
+              Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
+            },
+          }
+        );
       }
     });
   }
+  const newCalendar = await axiosInstance.post(
+    "https://www.googleapis.com/calendar/v3/calendars",
+    {
+      summary: "Clockify Addon Calendar",
+    },
+    {
+      headers: {
+        Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
+      },
+    }
+  );
+
+  googleCalendar = newCalendar.data.id;
 
   let updatedUser = await supabase
     .from("users")
@@ -158,7 +164,7 @@ export const fetchGoogleCalendars = async (
             auth: scopedUser.provider.google.auth,
             sync: scopedUser.provider.google.sync,
             calendarId: googleCalendar,
-            connected: true,
+            connected: scopedUser.provider.google.connected,
           },
         },
       },
@@ -183,7 +189,7 @@ export const timeEntriesSyncMutation = async (
 ) => {
   let scopedUser = queryClient.getQueryData(["user"]) as any;
 
-  if (!controlValue || scopedUser.provider.google.sync[type].initialized) {
+  if (!controlValue) {
     await updateFormStateInDatabase(
       scopedUser,
       type,
@@ -193,6 +199,7 @@ export const timeEntriesSyncMutation = async (
     );
     return [];
   }
+  await fetchGoogleCalendars(jwt, queryClient);
 
   try {
     const detailedReport = await axiosInstance.post(
@@ -468,7 +475,7 @@ async function updateFormStateInDatabase(
               },
             },
             calendarId: scopedUser.provider.google.calendarId,
-            connected: true,
+            connected: scopedUser.provider.google.connected,
           },
         },
       },
