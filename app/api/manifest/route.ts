@@ -6,9 +6,9 @@ const baseUrl =
     : "https://clockify-addon-calendar-integrations-projects.vercel.app/";
 export async function GET(request: Request) {
   let data = {
-    schemaVersion: "1.2",
     key: "GoogleCalendarIntegrationSr",
     name: "Calendar Integration",
+    iconPath: "/tab_icon.svg",
     description: "Transfer time entries and approved time offs to Google Calendar",
     baseUrl: baseUrl,
     lifecycle: [
