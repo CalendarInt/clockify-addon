@@ -6,11 +6,8 @@ const axiosInterceptorInstance = axios.create({});
 axiosInterceptorInstance.interceptors.request.use(
   async (config) => {
     // Modify the request config here (add headers, authentication tokens)
-    console.log(config, "config da to je to");
     let accessToken = JSON.parse(localStorage.getItem("auth"));
-    console.log(accessToken);
     const url = config.url.split("/api/")[1];
-    console.log(url);
     // if (new Date(accessToken?.expiry_date ?? "") < new Date() && url !=='auth') {
     //   let response = await axios.post(
     //     "https://herring-endless-firmly.ngrok-free.app/api/auth/refresh",

@@ -151,7 +151,6 @@ export const fetchGoogleCalendars = async (
       },
     }
   );
-
   googleCalendar = newCalendar.data.id;
 
   let updatedUser = await supabase
@@ -173,6 +172,7 @@ export const fetchGoogleCalendars = async (
     .select("*");
   if (updatedUser?.data) {
     scopedUser = updatedUser.data[0];
+    queryClient.invalidateQueries({ queryKey: ["user"] });
     queryClient.setQueryData(["user"], updatedUser.data[0]);
   }
 
@@ -200,6 +200,8 @@ export const timeEntriesSyncMutation = async (
     return [];
   }
   await fetchGoogleCalendars(jwt, queryClient);
+
+  scopedUser = queryClient.getQueryData(["user"]) as any;
 
   try {
     const detailedReport = await axiosInstance.post(
@@ -288,8 +290,6 @@ export const detailedReportMutation = async (
       },
     }
   );
-
-  console.log(detailedReport.data);
 };
 
 // export const detailedReportMutation = async (
@@ -311,7 +311,6 @@ export const detailedReportMutation = async (
 //     }
 //   );
 
-//   console.log(detailedReport.data);
 // };
 
 export const scheduledTimeSyncMutation = async (
@@ -356,7 +355,6 @@ export const scheduledTimeSyncMutation = async (
     const dataForSycn = scheduledTimes.data
       .filter((time: any) => time.userId === scopedUser.id)
       .map((time: any) => {
-        console.log(time);
         time.timeInterval = {};
         time.timeInterval.start = formatISO(
           parse(time.startTime, "HH:mm", new Date(time.period.start))
@@ -369,7 +367,6 @@ export const scheduledTimeSyncMutation = async (
         time.description = time.note;
         return time;
       });
-    console.log(dataForSycn);
 
     if (calendar === "Google" && dataForSycn.length > 0) {
       await syncWithGoogleCalendar(dataForSycn, queryClient);
@@ -389,15 +386,11 @@ async function syncWithGoogleCalendar(
   timeEntries: any,
   queryClient: QueryClient
 ) {
-  console.log(timeEntries);
-
   let scopedUser = queryClient.getQueryData(["user"]) as any;
 
   const boundary = "batch_google_calendar";
   let combinedBody = "";
   timeEntries.forEach((entrie: any) => {
-    console.log(entrie);
-
     combinedBody += `--${boundary}`;
     combinedBody += `\r\n`;
     combinedBody += `Content-Type: application/http`;

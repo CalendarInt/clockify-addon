@@ -66,8 +66,6 @@ export default function ProbaTest() {
   });
 
   useEffect(() => {
-    console.log(supabaseUser);
-
     if (!supabaseUser) {
       return;
     }
@@ -80,8 +78,6 @@ export default function ProbaTest() {
         !!supabaseUser?.provider?.google?.sync?.googleScheduledTime?.value,
     });
   }, [supabaseUser]);
-
-  console.log(supabaseUser);
 
   let pca: PublicClientApplication;
   pca = new PublicClientApplication({
@@ -106,10 +102,8 @@ export default function ProbaTest() {
     queryFn: () => fetchGoogleCalendars(jwt, queryClient),
     staleTime: Infinity,
     refetchInterval: false,
-    enabled: !!supabaseUser?.provider?.google?.auth,
+    enabled: false,
   });
-  console.log(googleCalendars);
-
   const {
     mutate: timeEntriesSync,
     isPending: isTimeEntriesSyncMutationPending,
@@ -124,11 +118,8 @@ export default function ProbaTest() {
         calendar,
         type
       ),
-    onSuccess: async (codeResponse) => {
-      console.log(codeResponse);
-    },
+    onSuccess: async (codeResponse) => {},
     onError: (error) => {
-      console.log(error);
       form.setValue("googleTimeEntry", !form.getValues().googleTimeEntry);
     },
   });
@@ -141,9 +132,7 @@ export default function ProbaTest() {
         searchParams.get("auth_token") as string,
         queryClient
       ),
-    onSuccess: async (codeResponse) => {
-      console.log(codeResponse);
-    },
+    onSuccess: async (codeResponse) => {},
     onError: (error) => {},
   });
 
@@ -158,11 +147,8 @@ export default function ProbaTest() {
           calendar,
           type
         ),
-      onSuccess: async (codeResponse) => {
-        console.log(codeResponse);
-      },
+      onSuccess: async (codeResponse) => {},
       onError: (error) => {
-        console.log(error);
         form.setValue(
           "googleScheduledTime",
           !form.getValues().googleScheduledTime
@@ -179,11 +165,8 @@ export default function ProbaTest() {
         calendar,
         type
       ),
-    onSuccess: async (codeResponse) => {
-      console.log(codeResponse);
-    },
+    onSuccess: async (codeResponse) => {},
     onError: (error) => {
-      console.log(error);
       form.setValue(
         "googleScheduledTime",
         !form.getValues().googleScheduledTime
@@ -266,10 +249,10 @@ export default function ProbaTest() {
         if (updatedUser?.data) {
           queryClient.setQueryData(["user"], updatedUser.data[0]);
         }
+
+        refetchGoogleCalendars();
       }
     },
-    onError: (errorResponse) => console.log(errorResponse),
-    onNonOAuthError: (errorResponse) => console.log(errorResponse),
   });
 
   const loadingArray = [
@@ -283,7 +266,6 @@ export default function ProbaTest() {
   const disconnect = async () => {
     let scopedUser = queryClient.getQueryData(["user"]) as any;
     let user = await disconnectUserFromCalendar(jwt, scopedUser, queryClient);
-    console.log(user);
   };
 
   const connect = async () => {
