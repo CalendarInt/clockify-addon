@@ -455,7 +455,7 @@ async function syncWithGoogleCalendar(
       combinedBody += `\r\n`;
 
       combinedBody += `{
-    "summary": "${entrie.description}",
+    "summary": "${entrie.summary ?? ""}",
     "description": "timeoff",
     "colorId": "2",
     "start": {
