@@ -79,6 +79,7 @@ export async function POST(request: Request, response: Response) {
         end: {
           dateTime: end,
         },
+        description: "timeoff",
       },
       {
         headers: {

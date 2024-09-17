@@ -112,7 +112,7 @@ export const fetchGoogleCalendars = async (
   );
 
   if (!response) {
-    return null;
+    return;
   }
 
   let clockifyCalendar = null;
@@ -125,8 +125,21 @@ export const fetchGoogleCalendars = async (
   });
 
   let googleCalendar = null;
+  let timeOffEntries = null;
 
   if (has) {
+    let timeOffEntriesInCalendar = await axiosInstance.get(
+      `https://www.googleapis.com/calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events?q=timeoff`,
+      {
+        headers: {
+          Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
+        },
+      }
+    );
+    console.log(timeOffEntriesInCalendar.data);
+
+    timeOffEntries = timeOffEntriesInCalendar.data.items;
+
     response.data.items.map(async (item: any) => {
       if (item.summary === "Clockify Addon Calendar") {
         await axiosInstance.delete(
@@ -176,7 +189,7 @@ export const fetchGoogleCalendars = async (
     queryClient.setQueryData(["user"], updatedUser.data[0]);
   }
 
-  return clockifyCalendar;
+  return { clockifyCalendar, timeOffEntries };
 };
 
 export const timeEntriesSyncMutation = async (
@@ -199,7 +212,14 @@ export const timeEntriesSyncMutation = async (
     );
     return [];
   }
-  await fetchGoogleCalendars(jwt, queryClient);
+  let clockifyCalendar = null;
+  let timeOffEntries = null;
+  const calendarRes = await fetchGoogleCalendars(jwt, queryClient);
+
+  if (calendarRes) {
+    clockifyCalendar = calendarRes.clockifyCalendar;
+    timeOffEntries = calendarRes.timeOffEntries;
+  }
 
   scopedUser = queryClient.getQueryData(["user"]) as any;
 
@@ -238,7 +258,7 @@ export const timeEntriesSyncMutation = async (
       }
     );
     if (calendar === "Google" && timeEntries.length > 0) {
-      await syncWithGoogleCalendar(timeEntries, queryClient);
+      await syncWithGoogleCalendar(timeEntries, queryClient, timeOffEntries);
     } else if (calendar === "Azure" && timeEntries.length > 0) {
       await syncWithAzureCalendar(timeEntries, queryClient);
     }
@@ -384,7 +404,8 @@ function syncWithAzureCalendar(timeEntries: any, queryClient: QueryClient) {}
 
 async function syncWithGoogleCalendar(
   timeEntries: any,
-  queryClient: QueryClient
+  queryClient: QueryClient,
+  timeOffEntries?: any
 ) {
   let scopedUser = queryClient.getQueryData(["user"]) as any;
 
@@ -417,6 +438,36 @@ async function syncWithGoogleCalendar(
 }`;
     combinedBody += `\r\n`;
   });
+
+  if (timeOffEntries) {
+    timeOffEntries.forEach((entrie: any) => {
+      combinedBody += `--${boundary}`;
+      combinedBody += `\r\n`;
+      combinedBody += `Content-Type: application/http`;
+      combinedBody += `\r\n`;
+      combinedBody += `Authorization: ${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`;
+      combinedBody += `\r\n`;
+      combinedBody += `\r\n`;
+      combinedBody += `POST /calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events`;
+      combinedBody += `\r\n`;
+      combinedBody += `Content-Type: application/json`;
+      combinedBody += `\r\n`;
+      combinedBody += `\r\n`;
+
+      combinedBody += `{
+    "summary": "${entrie.description}",
+    "description": "timeoff",
+    "colorId": "2",
+    "start": {
+      "dateTime": "${entrie.start.dateTime}"
+    },
+    "end": {
+      "dateTime": "${entrie.end.dateTime}"
+    }
+  }`;
+      combinedBody += `\r\n`;
+    });
+  }
 
   combinedBody += `--${boundary}--`;
 
