@@ -349,7 +349,8 @@ export default function ProbaTest() {
                     />
                   </div>
                   <h1>
-                    Time entries will inherit color from Clockify Addon Calendar
+                    Time entries will be displayed in blue color in Google
+                    Calendar
                   </h1>
                 </div>
 
