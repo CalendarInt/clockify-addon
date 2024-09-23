@@ -13,6 +13,12 @@ import {
 
 const baseUrl = process.env.NODE_ENV === "development" ? "developer" : "api";
 
+const getBaseUrl = (workspaceId: string) => {
+  return process.env.NODE_ENV === "development"
+    ? `https://developer.clockify.me/report/v1/workspaces/${workspaceId}/reports/detailed`
+    : `https://reports.api.clockify.me/v1/workspaces/${workspaceId}/reports/detailed`;
+};
+
 export const fetchCalendars = async (supabaseUser: any) => {
   localStorage.setItem(
     "auth",
@@ -227,7 +233,7 @@ export const timeEntriesSyncMutation = async (
 
   try {
     const detailedReport = await axiosInstance.post(
-      `https://${baseUrl}.clockify.me/report/v1/workspaces/${jwt.workspaceId}/reports/detailed`,
+      getBaseUrl(jwt.workspaceId),
       {
         dateRangeEnd: addMonths(new Date(), 1),
         dateRangeStart: subMonths(new Date(), 1),
@@ -295,7 +301,7 @@ export const detailedReportMutation = async (
   queryClient: QueryClient
 ) => {
   const detailedReport = await axiosInstance.post(
-    `https://${baseUrl}.clockify.me/report/v1/workspaces/${jwt.workspaceId}/reports/detailed`,
+    getBaseUrl(jwt.workspaceId),
     {
       dateRangeEnd: addMonths(new Date(), 3),
       dateRangeStart: subMonths(new Date(), 3),
