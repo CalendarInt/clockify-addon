@@ -7,7 +7,7 @@ const baseUrl =
 export async function GET(request: Request) {
   let data = {
     key: "GoogleCalendarIntegrationSr",
-    name: "Calendar Integration",
+    name: "Google Calendar Sync",
     iconPath: "/tab_icon.svg",
     description: "Transfer time entries and approved time offs to Google Calendar",
     baseUrl: baseUrl,

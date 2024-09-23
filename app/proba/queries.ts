@@ -11,6 +11,8 @@ import {
   addMonths,
 } from "date-fns";
 
+const baseUrl = process.env.NODE_ENV === "development" ? "developer" : "api";
+
 export const fetchCalendars = async (supabaseUser: any) => {
   localStorage.setItem(
     "auth",
@@ -225,7 +227,7 @@ export const timeEntriesSyncMutation = async (
 
   try {
     const detailedReport = await axiosInstance.post(
-      `https://developer.clockify.me/report/v1/workspaces/${jwt.workspaceId}/reports/detailed`,
+      `https://${baseUrl}.clockify.me/report/v1/workspaces/${jwt.workspaceId}/reports/detailed`,
       {
         dateRangeEnd: addMonths(new Date(), 1),
         dateRangeStart: subMonths(new Date(), 1),
@@ -293,7 +295,7 @@ export const detailedReportMutation = async (
   queryClient: QueryClient
 ) => {
   const detailedReport = await axiosInstance.post(
-    `https://developer.clockify.me/report/v1/workspaces/${jwt.workspaceId}/reports/detailed`,
+    `https://${baseUrl}.clockify.me/report/v1/workspaces/${jwt.workspaceId}/reports/detailed`,
     {
       dateRangeEnd: addMonths(new Date(), 3),
       dateRangeStart: subMonths(new Date(), 3),
@@ -357,7 +359,7 @@ export const scheduledTimeSyncMutation = async (
   try {
     // return [];
     const scheduledTimes = await axiosInstance.get(
-      `https://developer.clockify.me/api/v1/workspaces/${jwt.workspaceId}/scheduling/assignments/all`,
+      `https://${baseUrl}.clockify.me/api/v1/workspaces/${jwt.workspaceId}/scheduling/assignments/all`,
       {
         headers: {
           "x-addon-token": authToken,
