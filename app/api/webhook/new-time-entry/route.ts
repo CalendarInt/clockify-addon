@@ -89,7 +89,9 @@ export async function POST(request: Request, response: Response) {
         end: {
           dateTime: body.timeInterval.end,
         },
-        description: body.id,
+        description: body.description
+          ? body.description + " " + body.id
+          : body.id,
       },
       {
         headers: {
@@ -98,7 +100,7 @@ export async function POST(request: Request, response: Response) {
       }
     );
 
-    console.log(response.data);
+    console.log(response.data, "response.data from google calendar");
     return NextResponse.json(response.data);
   }
 
