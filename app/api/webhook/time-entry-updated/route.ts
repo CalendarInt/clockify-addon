@@ -85,6 +85,9 @@ export async function POST(request: Request, response: Response) {
           end: {
             dateTime: body.timeInterval.end,
           },
+          description: body.description
+            ? body.description + "\n" + body.id
+            : body.id,
         },
         {
           headers: {

@@ -90,7 +90,7 @@ export async function POST(request: Request, response: Response) {
           dateTime: body.timeInterval.end,
         },
         description: body.description
-          ? body.description + " " + body.id
+          ? body.description + "\n" + body.id
           : body.id,
       },
       {
