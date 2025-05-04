@@ -37,7 +37,7 @@ export async function POST(request: Request, response: Response) {
         (process.env.NODE_ENV === "development"
           ? "https://herring-endless-firmly.ngrok-free.app"
           : "https://clockify-addon-calendar-integrations-projects.vercel.app") +
-          "/api/auth/refresh",
+        "/api/auth/refresh",
         {
           refreshToken: user.data[0].provider.google.auth.refresh_token,
         }
@@ -76,9 +76,17 @@ export async function POST(request: Request, response: Response) {
     );
 
     try {
+      const client = body.project?.clientName
+        ? `${body.project?.clientName} : `
+        : "";
+      const project = body.project?.name ?? "";
+      const task = body.task?.name ? ` : ${body.task?.name}` : "";
+      const description = body.description ? ` - ${body.description}` : "";
+
       let response1 = await axios.patch(
         `https://www.googleapis.com/calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events/${response.data.items[0].id}`,
         {
+          summary: client + project + task + description,
           start: {
             dateTime: body.timeInterval.start,
           },
