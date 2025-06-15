@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 
 const baseUrl =
-  process.env.NODE_ENV === "development"
-    ? "https://herring-endless-firmly.ngrok-free.app"
-    : "https://clockify-addon-calendar-integrations-projects.vercel.app/";
+  process.env.NEXT_PUBLIC_API_URL || 'https://herring-endless-firmly.ngrok-free.app';
 export async function GET(request: Request) {
   let data = {
     key: "GoogleCalendarIntegrationSr",

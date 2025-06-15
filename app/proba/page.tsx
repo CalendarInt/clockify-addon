@@ -27,6 +27,7 @@ import {
   scheduledTimeSyncMutation,
   timeEntriesSyncMutation,
   timeOffSyncMutation,
+  getRootUrl,
 } from "./queries";
 import Loading from "@/components/loading";
 import {
@@ -222,10 +223,7 @@ export default function ProbaTest() {
     flow: "auth-code",
     onSuccess: async (codeResponse) => {
       const tokens = await axiosInstance.post(
-        (process.env.NODE_ENV === "development"
-          ? "https://herring-endless-firmly.ngrok-free.app"
-          : "https://clockify-addon-calendar-integrations-projects.vercel.app") +
-          "/api/auth",
+        `${getRootUrl()}/api/auth`,
         {
           code: codeResponse.code,
         }

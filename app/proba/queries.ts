@@ -19,6 +19,12 @@ const getBaseUrl = (workspaceId: string) => {
     : `https://reports.api.clockify.me/v1/workspaces/${workspaceId}/reports/detailed`;
 };
 
+const getRootUrl = () => {
+  return process.env.NEXT_PUBLIC_API_URL || 'https://herring-endless-firmly.ngrok-free.app';
+};
+
+export { getRootUrl };
+
 export const fetchCalendars = async (supabaseUser: any) => {
   localStorage.setItem(
     "auth",
@@ -90,10 +96,7 @@ export const fetchGoogleCalendars = async (
 
   if (scopedUser.provider?.google?.auth?.expiry_date < new Date()) {
     let response = await axiosInstance.post(
-      (process.env.NODE_ENV === "development"
-        ? "https://herring-endless-firmly.ngrok-free.app"
-        : "https://clockify-addon-calendar-integrations-projects.vercel.app") +
-        "/api/auth/refresh",
+      `${getRootUrl()}/api/auth/refresh`,
       {
         refreshToken: scopedUser.provider.google.auth.refresh_token,
       }
