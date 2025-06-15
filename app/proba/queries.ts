@@ -68,20 +68,32 @@ export const fetchUser = async (jwt: ClockifyToken) => {
   }
 };
 
+interface GoogleCalendarItem {
+  id: string;
+  summary: string;
+}
+
+interface GoogleCalendarResponse {
+  items: GoogleCalendarItem[];
+}
+
+interface GoogleCalendarCreateResponse {
+  id: string;
+}
+
 export const fetchGoogleCalendars = async (
   jwt: ClockifyToken,
   queryClient: QueryClient
-) => {
+): Promise<{ calendarId: string } | undefined> => {
   let scopedUser = queryClient.getQueryData(["user"]) as any;
   const supabase = createClient();
 
-  if (scopedUser.provider?.google.auth.expiry_date < new Date()) {
+  if (scopedUser.provider?.google?.auth?.expiry_date < new Date()) {
     let response = await axiosInstance.post(
       (process.env.NODE_ENV === "development"
         ? "https://herring-endless-firmly.ngrok-free.app"
         : "https://clockify-addon-calendar-integrations-projects.vercel.app") +
         "/api/auth/refresh",
-
       {
         refreshToken: scopedUser.provider.google.auth.refresh_token,
       }
@@ -110,7 +122,8 @@ export const fetchGoogleCalendars = async (
       queryClient.setQueryData(["user"], updatedUser.data[0]);
     }
   }
-  let response = await axiosInstance.get(
+
+  let response = await axiosInstance.get<GoogleCalendarResponse>(
     "https://www.googleapis.com/calendar/v3/users/me/calendarList",
     {
       headers: {
@@ -123,56 +136,34 @@ export const fetchGoogleCalendars = async (
     return;
   }
 
-  let clockifyCalendar = null;
-  const has = response.data.items.some((item: any) => {
+  let existingCalendar: GoogleCalendarItem | null = null;
+  const items = response.data.items as GoogleCalendarItem[];
+  const hasClockifyCalendar = items.some((item) => {
     if (item.summary === "Clockify Addon Calendar") {
-      clockifyCalendar = item;
+      existingCalendar = item;
+      return true;
     }
-
-    return item.summary === "Clockify Addon Calendar";
+    return false;
   });
 
-  let googleCalendar = null;
-  let timeOffEntries = null;
-
-  if (has) {
-    let timeOffEntriesInCalendar = await axiosInstance.get(
-      `https://www.googleapis.com/calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events?q=timeoff`,
+  let calendarId: string;
+  
+  if (hasClockifyCalendar && existingCalendar) {
+    calendarId = (existingCalendar as GoogleCalendarItem).id;
+  } else {
+    const newCalendar = await axiosInstance.post<GoogleCalendarCreateResponse>(
+      "https://www.googleapis.com/calendar/v3/calendars",
+      {
+        summary: "Clockify Addon Calendar",
+      },
       {
         headers: {
           Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
         },
       }
     );
-    console.log(timeOffEntriesInCalendar.data);
-
-    timeOffEntries = timeOffEntriesInCalendar.data.items;
-
-    response.data.items.map(async (item: any) => {
-      if (item.summary === "Clockify Addon Calendar") {
-        await axiosInstance.delete(
-          `https://www.googleapis.com/calendar/v3/users/me/calendarList/${item.id}`,
-          {
-            headers: {
-              Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
-            },
-          }
-        );
-      }
-    });
+    calendarId = newCalendar.data.id;
   }
-  const newCalendar = await axiosInstance.post(
-    "https://www.googleapis.com/calendar/v3/calendars",
-    {
-      summary: "Clockify Addon Calendar",
-    },
-    {
-      headers: {
-        Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
-      },
-    }
-  );
-  googleCalendar = newCalendar.data.id;
 
   let updatedUser = await supabase
     .from("users")
@@ -182,22 +173,27 @@ export const fetchGoogleCalendars = async (
         ...{
           google: {
             auth: scopedUser.provider.google.auth,
-            sync: scopedUser.provider.google.sync,
-            calendarId: googleCalendar,
-            connected: scopedUser.provider.google.connected,
+            sync: {
+              googleTimeEntry: { value: false, initialized: false },
+              googleTimeOff: { value: false, initialized: false },
+              googleScheduledTime: { value: false, initialized: false },
+            },
+            calendarId: calendarId,
+            connected: true,
           },
         },
       },
     })
     .eq("id", jwt.user as string)
     .select("*");
+
   if (updatedUser?.data) {
     scopedUser = updatedUser.data[0];
     queryClient.invalidateQueries({ queryKey: ["user"] });
     queryClient.setQueryData(["user"], updatedUser.data[0]);
   }
 
-  return { clockifyCalendar, timeOffEntries };
+  return { calendarId };
 };
 
 export const timeEntriesSyncMutation = async (
@@ -220,13 +216,10 @@ export const timeEntriesSyncMutation = async (
     );
     return [];
   }
-  let clockifyCalendar = null;
-  let timeOffEntries = null;
-  const calendarRes = await fetchGoogleCalendars(jwt, queryClient);
 
-  if (calendarRes) {
-    clockifyCalendar = calendarRes.clockifyCalendar;
-    timeOffEntries = calendarRes.timeOffEntries;
+  const calendarRes = await fetchGoogleCalendars(jwt, queryClient);
+  if (!calendarRes) {
+    return;
   }
 
   scopedUser = queryClient.getQueryData(["user"]) as any;
@@ -246,7 +239,6 @@ export const timeEntriesSyncMutation = async (
       {
         headers: {
           "x-addon-token": authToken,
-          // "X-Api-Key": "YTYwYzRlYTMtM2NmNC00NGEwLWJmYWQtZDRjNGVmZjA2MDRk",
         },
       }
     );
@@ -266,7 +258,7 @@ export const timeEntriesSyncMutation = async (
       }
     );
     if (calendar === "Google" && timeEntries.length > 0) {
-      await syncWithGoogleCalendar(timeEntries, queryClient, timeOffEntries);
+      await syncWithGoogleCalendar(timeEntries, queryClient);
     } else if (calendar === "Azure" && timeEntries.length > 0) {
       await syncWithAzureCalendar(timeEntries, queryClient);
     }
@@ -412,14 +404,40 @@ function syncWithAzureCalendar(timeEntries: any, queryClient: QueryClient) {}
 
 async function syncWithGoogleCalendar(
   timeEntries: any,
-  queryClient: QueryClient,
-  timeOffEntries?: any
+  queryClient: QueryClient
 ) {
   let scopedUser = queryClient.getQueryData(["user"]) as any;
 
+  // First, fetch existing events from the calendar
+  const existingEvents = await axiosInstance.get(
+    `https://www.googleapis.com/calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events`,
+    {
+      headers: {
+        Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
+      },
+    }
+  );
+
+  // Create a map of existing events by their Clockify ID (removing the "1 " prefix)
+  const existingEventsMap = new Map(
+    existingEvents.data.items.map((event: any) => {
+      // Extract the Clockify ID from the description (remove "1 " prefix)
+      const clockifyId = event.description.split(' ')[1];
+      return [clockifyId, event];
+    })
+  );
+
+  // Filter out entries that already exist in the calendar
+  const newEntries = timeEntries.filter((entry: any) => !existingEventsMap.has(entry._id));
+
+  if (newEntries.length === 0) {
+    return; // No new entries to sync
+  }
+
   const boundary = "batch_google_calendar";
   let combinedBody = "";
-  timeEntries.forEach((entrie: any) => {
+  
+  newEntries.forEach((entrie: any) => {
     combinedBody += `--${boundary}`;
     combinedBody += `\r\n`;
     combinedBody += `Content-Type: application/http`;
@@ -435,7 +453,7 @@ async function syncWithGoogleCalendar(
 
     combinedBody += `{
   "summary": "${entrie.description}",
-  "description": "${entrie._id}",
+  "description": "1 ${entrie._id}",
   "colorId": "7",
   "start": {
     "dateTime": "${entrie.timeInterval.start}"
@@ -446,36 +464,6 @@ async function syncWithGoogleCalendar(
 }`;
     combinedBody += `\r\n`;
   });
-
-  if (timeOffEntries) {
-    timeOffEntries.forEach((entrie: any) => {
-      combinedBody += `--${boundary}`;
-      combinedBody += `\r\n`;
-      combinedBody += `Content-Type: application/http`;
-      combinedBody += `\r\n`;
-      combinedBody += `Authorization: ${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`;
-      combinedBody += `\r\n`;
-      combinedBody += `\r\n`;
-      combinedBody += `POST /calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events`;
-      combinedBody += `\r\n`;
-      combinedBody += `Content-Type: application/json`;
-      combinedBody += `\r\n`;
-      combinedBody += `\r\n`;
-
-      combinedBody += `{
-    "summary": "${entrie.summary ?? ""}",
-    "description": "timeoff",
-    "colorId": "2",
-    "start": {
-      "dateTime": "${entrie.start.dateTime}"
-    },
-    "end": {
-      "dateTime": "${entrie.end.dateTime}"
-    }
-  }`;
-      combinedBody += `\r\n`;
-    });
-  }
 
   combinedBody += `--${boundary}--`;
 
@@ -546,20 +534,13 @@ export async function disconnectUserFromCalendar(
   queryClient: any
 ) {
   const supabase = createClient();
+
+  const { google, ...providerWithoutGoogle } = scopedUser.provider;
+
   let updatedUser = await supabase
     .from("users")
     .update({
-      provider: {
-        ...scopedUser.provider,
-        ...{
-          google: {
-            auth: scopedUser.provider.google.auth,
-            sync: scopedUser.provider.google.sync,
-            calendarId: scopedUser.provider.google.calendarId,
-            connected: false,
-          },
-        },
-      },
+      provider: providerWithoutGoogle,
     })
     .eq("id", jwt.user)
     .select("*");

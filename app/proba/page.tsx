@@ -29,6 +29,17 @@ import {
   timeOffSyncMutation,
 } from "./queries";
 import Loading from "@/components/loading";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function ProbaTest() {
   const queryClient = useQueryClient();
@@ -314,9 +325,26 @@ export default function ProbaTest() {
                   {"Connect"}
                 </Button>
               ) : (
-                <Button onClick={disconnect} className={` bg-green-600`}>
-                  Disconnect
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button className="bg-green-600">Disconnect</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure you want to disconnect?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove all Google Calendar integration settings and stop syncing your calendar events.
+                        You can always reconnect later.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={disconnect} className="bg-red-600 hover:bg-red-700">
+                        Disconnect
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
 
