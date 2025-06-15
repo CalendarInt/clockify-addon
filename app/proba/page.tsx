@@ -405,7 +405,7 @@ export default function ProbaTest() {
                     </FormItem>
                   )}
                 /> */}
-                <div className="flex flex-row gap-5 items-center">
+                {/* <div className="flex flex-row gap-5 items-center">
                   <div className="w-1/5">
                     <FormField
                       control={form.control}
@@ -434,7 +434,7 @@ export default function ProbaTest() {
                   <h1>
                     Time off will be displayed in green color in Google Calendar
                   </h1>
-                </div>
+                </div> */}
               </form>
             </Form>
           </div>
