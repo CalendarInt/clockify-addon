@@ -116,6 +116,9 @@ export const fetchGoogleCalendars = async (
       headers: {
         Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
       },
+      params: {
+        maxResults: 250,
+      },
     }
   );
 
@@ -123,56 +126,39 @@ export const fetchGoogleCalendars = async (
     return;
   }
 
-  let clockifyCalendar = null;
-  const has = response.data.items.some((item: any) => {
-    if (item.summary === "Clockify Addon Calendar") {
-      clockifyCalendar = item;
-    }
+  // Reuse the existing addon calendar instead of creating a new one every time:
+  // Google rate-limits calendar creation, so repeated toggling used to fail.
+  // Prefer the calendar we already stored, then any owned one with the addon name.
+  const addonCalendars = response.data.items.filter(
+    (item: any) =>
+      item.summary === "Clockify Addon Calendar" && item.accessRole === "owner"
+  );
+  const clockifyCalendar =
+    addonCalendars.find(
+      (item: any) => item.id === scopedUser.provider.google.calendarId
+    ) ??
+    addonCalendars[0] ??
+    null;
 
-    return item.summary === "Clockify Addon Calendar";
-  });
+  let googleCalendar = clockifyCalendar?.id;
 
-  let googleCalendar = null;
-  let timeOffEntries = null;
-
-  if (has) {
-    let timeOffEntriesInCalendar = await axiosInstance.get(
-      `https://www.googleapis.com/calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events?q=timeoff`,
+  if (!googleCalendar) {
+    const newCalendar = await axiosInstance.post(
+      "https://www.googleapis.com/calendar/v3/calendars",
+      {
+        summary: "Clockify Addon Calendar",
+      },
       {
         headers: {
           Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
         },
       }
     );
-    console.log(timeOffEntriesInCalendar.data);
-
-    timeOffEntries = timeOffEntriesInCalendar.data.items;
-
-    response.data.items.map(async (item: any) => {
-      if (item.summary === "Clockify Addon Calendar") {
-        await axiosInstance.delete(
-          `https://www.googleapis.com/calendar/v3/users/me/calendarList/${item.id}`,
-          {
-            headers: {
-              Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
-            },
-          }
-        );
-      }
-    });
+    googleCalendar = newCalendar.data.id;
   }
-  const newCalendar = await axiosInstance.post(
-    "https://www.googleapis.com/calendar/v3/calendars",
-    {
-      summary: "Clockify Addon Calendar",
-    },
-    {
-      headers: {
-        Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
-      },
-    }
-  );
-  googleCalendar = newCalendar.data.id;
+
+  // Time offs already live in the reused calendar, so nothing has to be copied over.
+  const timeOffEntries = null;
 
   let updatedUser = await supabase
     .from("users")
@@ -218,7 +204,7 @@ export const timeEntriesSyncMutation = async (
       jwt,
       queryClient
     );
-    return [];
+    return undefined;
   }
   let clockifyCalendar = null;
   let timeOffEntries = null;
@@ -231,12 +217,16 @@ export const timeEntriesSyncMutation = async (
 
   scopedUser = queryClient.getQueryData(["user"]) as any;
 
+  const dateRangeStart = subMonths(new Date(), 1);
+  const dateRangeEnd = addMonths(new Date(), 1);
+  let syncResult: SyncResult | undefined;
+
   try {
     const detailedReport = await axiosInstance.post(
       getBaseUrl(jwt.workspaceId),
       {
-        dateRangeEnd: addMonths(new Date(), 1),
-        dateRangeStart: subMonths(new Date(), 1),
+        dateRangeEnd,
+        dateRangeStart,
         detailedFilter: {},
         amountShown: "HIDE_AMOUNT",
         users: {
@@ -266,7 +256,22 @@ export const timeEntriesSyncMutation = async (
       }
     );
     if (calendar === "Google" && timeEntries.length > 0) {
-      await syncWithGoogleCalendar(timeEntries, queryClient, timeOffEntries);
+      // The calendar is reused now, so skip entries that are already in it.
+      const syncedIds = await fetchSyncedTimeEntryIds(
+        scopedUser,
+        dateRangeStart,
+        dateRangeEnd
+      );
+      const newTimeEntries = timeEntries.filter(
+        (timeEntry: any) => !syncedIds.has(timeEntry._id)
+      );
+      if (newTimeEntries.length > 0) {
+        syncResult = await syncWithGoogleCalendar(
+          newTimeEntries,
+          queryClient,
+          timeOffEntries
+        );
+      }
     } else if (calendar === "Azure" && timeEntries.length > 0) {
       await syncWithAzureCalendar(timeEntries, queryClient);
     }
@@ -281,7 +286,64 @@ export const timeEntriesSyncMutation = async (
     jwt,
     queryClient
   );
+
+  return syncResult;
 };
+
+export type SyncResult = {
+  total: number;
+  failed: number;
+  firstError?: string;
+};
+
+// Collects the Clockify time entry ids found in event descriptions of the
+// addon calendar (batch-synced events store the id, webhook events append it).
+async function fetchSyncedTimeEntryIds(
+  scopedUser: any,
+  timeMin: Date,
+  timeMax: Date
+) {
+  const ids = new Set<string>();
+  let pageToken: string | undefined;
+
+  do {
+    const response = await axiosInstance.get(
+      `https://www.googleapis.com/calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events`,
+      {
+        headers: {
+          Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
+        },
+        params: {
+          timeMin: timeMin.toISOString(),
+          timeMax: timeMax.toISOString(),
+          maxResults: 2500,
+          pageToken,
+        },
+      }
+    );
+    response.data.items?.forEach((event: any) => {
+      event.description
+        ?.match(/[0-9a-f]{24}/g)
+        ?.forEach((id: string) => ids.add(id));
+    });
+    pageToken = response.data.nextPageToken;
+  } while (pageToken);
+
+  return ids;
+}
+
+// Google answers a batch with 200 even when single events fail,
+// so read the status of every part to report the failures.
+function parseBatchResponse(body: string, total: number): SyncResult {
+  const statuses = Array.from(
+    String(body).matchAll(/HTTP\/1\.1 (\d{3})/g),
+    (match) => Number(match[1])
+  );
+  const failed = statuses.filter((status) => status >= 400).length;
+  const firstError = String(body).match(/"message":\s*"([^"]*)"/)?.[1];
+
+  return { total, failed, firstError: failed ? firstError : undefined };
+}
 
 export const timeOffSyncMutation = async (
   jwt: ClockifyToken,
@@ -433,17 +495,17 @@ async function syncWithGoogleCalendar(
     combinedBody += `\r\n`;
     combinedBody += `\r\n`;
 
-    combinedBody += `{
-  "summary": "${entrie.description}",
-  "description": "${entrie._id}",
-  "colorId": "7",
-  "start": {
-    "dateTime": "${entrie.timeInterval.start}"
-  },
-  "end": {
-    "dateTime": "${entrie.timeInterval.end}"
-  }
-}`;
+    combinedBody += JSON.stringify({
+      summary: entrie.description,
+      description: entrie._id,
+      colorId: "7",
+      start: {
+        dateTime: entrie.timeInterval.start,
+      },
+      end: {
+        dateTime: entrie.timeInterval.end,
+      },
+    });
     combinedBody += `\r\n`;
   });
 
@@ -462,26 +524,27 @@ async function syncWithGoogleCalendar(
       combinedBody += `\r\n`;
       combinedBody += `\r\n`;
 
-      combinedBody += `{
-    "summary": "${entrie.summary ?? ""}",
-    "description": "timeoff",
-    "colorId": "2",
-    "start": {
-      "dateTime": "${entrie.start.dateTime}"
-    },
-    "end": {
-      "dateTime": "${entrie.end.dateTime}"
-    }
-  }`;
+      combinedBody += JSON.stringify({
+        summary: entrie.summary ?? "",
+        description: "timeoff",
+        colorId: "2",
+        start: {
+          dateTime: entrie.start.dateTime,
+        },
+        end: {
+          dateTime: entrie.end.dateTime,
+        },
+      });
       combinedBody += `\r\n`;
     });
   }
 
   combinedBody += `--${boundary}--`;
 
-  const contentLength = Buffer.byteLength(combinedBody, "utf-8");
+  const total = timeEntries.length + (timeOffEntries?.length ?? 0);
 
   try {
+    // The browser sets Content-Length itself (it refuses a manual value).
     const response = await axiosInstance.post(
       `https://www.googleapis.com/batch/calendar/v3`,
       combinedBody,
@@ -489,12 +552,11 @@ async function syncWithGoogleCalendar(
         headers: {
           Authorization: `${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`,
           "Content-Type": `multipart/mixed; boundary=${boundary}`,
-          "Content-Length": contentLength,
         },
       }
     );
 
-    return response;
+    return parseBatchResponse(response.data, total);
   } catch (error) {
     throw error;
   }

@@ -30,6 +30,18 @@ import {
 } from "./queries";
 import Loading from "@/components/loading";
 
+// Pulls a readable reason out of a failed Google or Clockify API call.
+function describeSyncError(error: any): string {
+  const status = error?.response?.status;
+  const detail =
+    error?.response?.data?.error?.message ??
+    error?.response?.data?.message ??
+    error?.message ??
+    "Unknown error";
+
+  return status ? `${status}: ${detail}` : detail;
+}
+
 export default function ProbaTest() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -104,6 +116,8 @@ export default function ProbaTest() {
     refetchInterval: false,
     enabled: false,
   });
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
   const {
     mutate: timeEntriesSync,
     isPending: isTimeEntriesSyncMutationPending,
@@ -118,9 +132,24 @@ export default function ProbaTest() {
         calendar,
         type
       ),
-    onSuccess: async (codeResponse) => {},
+    onMutate: () => {
+      setSyncMessage(null);
+    },
+    onSuccess: async (syncResult) => {
+      if (syncResult?.failed) {
+        setSyncMessage(
+          `${syncResult.failed} of ${syncResult.total} time entries could not be added to Google Calendar` +
+            (syncResult.firstError ? `: ${syncResult.firstError}` : ".")
+        );
+      }
+    },
     onError: (error) => {
       form.setValue("googleTimeEntry", !form.getValues().googleTimeEntry);
+      setSyncMessage(
+        `Time entry sync could not be updated (${describeSyncError(
+          error
+        )}). Please try again, or contact support and include this message.`
+      );
     },
   });
 
@@ -353,6 +382,9 @@ export default function ProbaTest() {
                     Calendar
                   </h1>
                 </div>
+                {syncMessage && (
+                  <p className="text-sm text-red-600">{syncMessage}</p>
+                )}
 
                 {/* <FormField
                   control={form.control}
