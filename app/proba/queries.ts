@@ -281,9 +281,9 @@ export const timeEntriesSyncMutation = async (
 
 // The Free Clockify plan rejects report ranges longer than a month, so the
 // sync window is requested in shorter chunks that every plan accepts, and
-// each chunk is read page by page (the report returns 50 entries per page).
+// each chunk is read page by page.
 const REPORT_CHUNK_DAYS = 14;
-const REPORT_PAGE_SIZE = 50;
+const REPORT_PAGE_SIZE = 200;
 const REPORT_MAX_PAGES = 40;
 
 async function fetchReportTimeEntries(
@@ -329,11 +329,18 @@ async function fetchReportTimeEntries(
       );
 
       const pageEntries = detailedReport.data.timeentries ?? [];
+      const knownCount = timeEntries.size;
       // Entries on a chunk boundary can be returned twice.
       pageEntries.forEach((timeEntry: any) =>
         timeEntries.set(timeEntry._id, timeEntry)
       );
-      if (pageEntries.length < REPORT_PAGE_SIZE) {
+      // Stop when a page brings nothing new as well: the report has been seen
+      // ignoring paging and returning everything, which would otherwise repeat
+      // the same request and burn the Free plan's hourly API limit.
+      if (
+        pageEntries.length < REPORT_PAGE_SIZE ||
+        timeEntries.size === knownCount
+      ) {
         break;
       }
     }
