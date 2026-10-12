@@ -6,6 +6,7 @@ import {
   subMonths,
   addYears,
   addHours,
+  addDays,
   parse,
   formatISO,
   addMonths,
@@ -222,26 +223,14 @@ export const timeEntriesSyncMutation = async (
   let syncResult: SyncResult | undefined;
 
   try {
-    const detailedReport = await axiosInstance.post(
-      getBaseUrl(jwt.workspaceId),
-      {
-        dateRangeEnd,
-        dateRangeStart,
-        detailedFilter: {},
-        amountShown: "HIDE_AMOUNT",
-        users: {
-          ids: [jwt.user],
-        },
-      },
-      {
-        headers: {
-          "x-addon-token": authToken,
-          // "X-Api-Key": "YTYwYzRlYTMtM2NmNC00NGEwLWJmYWQtZDRjNGVmZjA2MDRk",
-        },
-      }
+    const reportTimeEntries = await fetchReportTimeEntries(
+      jwt,
+      authToken,
+      dateRangeStart,
+      dateRangeEnd
     );
 
-    const timeEntries = detailedReport.data.timeentries.filter(
+    const timeEntries = reportTimeEntries.filter(
       (timeEntry: any) => {
         const client = timeEntry?.clientName
           ? `${timeEntry?.clientName} : `
@@ -289,6 +278,69 @@ export const timeEntriesSyncMutation = async (
 
   return syncResult;
 };
+
+// The Free Clockify plan rejects report ranges longer than a month, so the
+// sync window is requested in shorter chunks that every plan accepts, and
+// each chunk is read page by page (the report returns 50 entries per page).
+const REPORT_CHUNK_DAYS = 14;
+const REPORT_PAGE_SIZE = 50;
+const REPORT_MAX_PAGES = 40;
+
+async function fetchReportTimeEntries(
+  jwt: ClockifyToken,
+  authToken: string,
+  rangeStart: Date,
+  rangeEnd: Date
+) {
+  const timeEntries = new Map<string, any>();
+
+  for (
+    let chunkStart = rangeStart;
+    chunkStart < rangeEnd;
+    chunkStart = addDays(chunkStart, REPORT_CHUNK_DAYS)
+  ) {
+    const chunkEnd = new Date(
+      Math.min(
+        addDays(chunkStart, REPORT_CHUNK_DAYS).getTime(),
+        rangeEnd.getTime()
+      )
+    );
+
+    for (let page = 1; page <= REPORT_MAX_PAGES; page++) {
+      const detailedReport = await axiosInstance.post(
+        getBaseUrl(jwt.workspaceId),
+        {
+          dateRangeStart: chunkStart,
+          dateRangeEnd: chunkEnd,
+          detailedFilter: {
+            page,
+            pageSize: REPORT_PAGE_SIZE,
+          },
+          amountShown: "HIDE_AMOUNT",
+          users: {
+            ids: [jwt.user],
+          },
+        },
+        {
+          headers: {
+            "x-addon-token": authToken,
+          },
+        }
+      );
+
+      const pageEntries = detailedReport.data.timeentries ?? [];
+      // Entries on a chunk boundary can be returned twice.
+      pageEntries.forEach((timeEntry: any) =>
+        timeEntries.set(timeEntry._id, timeEntry)
+      );
+      if (pageEntries.length < REPORT_PAGE_SIZE) {
+        break;
+      }
+    }
+  }
+
+  return Array.from(timeEntries.values());
+}
 
 export type SyncResult = {
   total: number;
@@ -472,6 +524,8 @@ export const scheduledTimeSyncMutation = async (
 
 function syncWithAzureCalendar(timeEntries: any, queryClient: QueryClient) {}
 
+const GOOGLE_BATCH_LIMIT = 50;
+
 async function syncWithGoogleCalendar(
   timeEntries: any,
   queryClient: QueryClient,
@@ -480,37 +534,38 @@ async function syncWithGoogleCalendar(
   let scopedUser = queryClient.getQueryData(["user"]) as any;
 
   const boundary = "batch_google_calendar";
-  let combinedBody = "";
-  timeEntries.forEach((entrie: any) => {
-    combinedBody += `--${boundary}`;
-    combinedBody += `\r\n`;
-    combinedBody += `Content-Type: application/http`;
-    combinedBody += `\r\n`;
-    combinedBody += `Authorization: ${scopedUser.provider.google.auth.token_type} ${scopedUser.provider.google.auth.access_token}`;
-    combinedBody += `\r\n`;
-    combinedBody += `\r\n`;
-    combinedBody += `POST /calendar/v3/calendars/${scopedUser.provider.google.calendarId}/events`;
-    combinedBody += `\r\n`;
-    combinedBody += `Content-Type: application/json`;
-    combinedBody += `\r\n`;
-    combinedBody += `\r\n`;
+  const eventBodies: object[] = timeEntries.map((entrie: any) => ({
+    summary: entrie.description,
+    description: entrie._id,
+    colorId: "7",
+    start: {
+      dateTime: entrie.timeInterval.start,
+    },
+    end: {
+      dateTime: entrie.timeInterval.end,
+    },
+  }));
 
-    combinedBody += JSON.stringify({
-      summary: entrie.description,
-      description: entrie._id,
-      colorId: "7",
+  timeOffEntries?.forEach((entrie: any) => {
+    eventBodies.push({
+      summary: entrie.summary ?? "",
+      description: "timeoff",
+      colorId: "2",
       start: {
-        dateTime: entrie.timeInterval.start,
+        dateTime: entrie.start.dateTime,
       },
       end: {
-        dateTime: entrie.timeInterval.end,
+        dateTime: entrie.end.dateTime,
       },
     });
-    combinedBody += `\r\n`;
   });
 
-  if (timeOffEntries) {
-    timeOffEntries.forEach((entrie: any) => {
+  const result: SyncResult = { total: eventBodies.length, failed: 0 };
+
+  // Google Calendar accepts at most 50 calls in one batch request.
+  for (let i = 0; i < eventBodies.length; i += GOOGLE_BATCH_LIMIT) {
+    let combinedBody = "";
+    eventBodies.slice(i, i + GOOGLE_BATCH_LIMIT).forEach((eventBody) => {
       combinedBody += `--${boundary}`;
       combinedBody += `\r\n`;
       combinedBody += `Content-Type: application/http`;
@@ -523,27 +578,11 @@ async function syncWithGoogleCalendar(
       combinedBody += `Content-Type: application/json`;
       combinedBody += `\r\n`;
       combinedBody += `\r\n`;
-
-      combinedBody += JSON.stringify({
-        summary: entrie.summary ?? "",
-        description: "timeoff",
-        colorId: "2",
-        start: {
-          dateTime: entrie.start.dateTime,
-        },
-        end: {
-          dateTime: entrie.end.dateTime,
-        },
-      });
+      combinedBody += JSON.stringify(eventBody);
       combinedBody += `\r\n`;
     });
-  }
+    combinedBody += `--${boundary}--`;
 
-  combinedBody += `--${boundary}--`;
-
-  const total = timeEntries.length + (timeOffEntries?.length ?? 0);
-
-  try {
     // The browser sets Content-Length itself (it refuses a manual value).
     const response = await axiosInstance.post(
       `https://www.googleapis.com/batch/calendar/v3`,
@@ -556,10 +595,12 @@ async function syncWithGoogleCalendar(
       }
     );
 
-    return parseBatchResponse(response.data, total);
-  } catch (error) {
-    throw error;
+    const chunkResult = parseBatchResponse(response.data, 0);
+    result.failed += chunkResult.failed;
+    result.firstError ??= chunkResult.firstError;
   }
+
+  return result;
 }
 
 async function updateFormStateInDatabase(

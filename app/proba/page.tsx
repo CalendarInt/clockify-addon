@@ -144,7 +144,14 @@ export default function ProbaTest() {
       }
     },
     onError: (error) => {
-      form.setValue("googleTimeEntry", !form.getValues().googleTimeEntry);
+      // Show the value that is actually stored. Flipping the current value is
+      // wrong here: the form is reset from the refreshed user data while the
+      // request runs, so a flip turned the switch back on after a failure.
+      const storedUser = queryClient.getQueryData(["user"]) as any;
+      form.setValue(
+        "googleTimeEntry",
+        !!storedUser?.provider?.google?.sync?.googleTimeEntry?.value
+      );
       setSyncMessage(
         `Time entry sync could not be updated (${describeSyncError(
           error
